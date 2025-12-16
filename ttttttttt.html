@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>RAJ MODS</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700;900&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+    /* SECURITY & UI STYLES */
+    body { -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
+    :root { --bg-dark: #09090b; --card-bg: rgba(30, 30, 40, 0.85); --primary: #6366f1; --accent: #8b5cf6; --success: #10b981; --danger: #ef4444; --gold: #fbbf24; --text: #f3f4f6; --glass: rgba(255, 255, 255, 0.05); --border: rgba(255, 255, 255, 0.1); --nav-height: 70px; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+    
+    body { margin: 0; background-color: var(--bg-dark); background-image: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.2) 0%, transparent 40%), radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.2) 0%, transparent 40%); color: var(--text); font-family: 'Poppins', sans-serif; height: 100vh; height: 100dvh; overflow: hidden; }
+
+    /* LOGIN & SECURITY OVERLAYS */
+    #security-overlay, #pc-block-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: #000; z-index: 100000;
+        display: flex; flex-direction: column; justify-content: center; align-items: center;
+        text-align: center; padding: 20px;
+    }
+    #pc-block-overlay { display: none; background: #050505; }
+    
+    .login-box {
+        background: rgba(20, 20, 25, 0.9); border: 1px solid var(--primary);
+        padding: 30px; border-radius: 20px; width: 100%; max-width: 320px;
+        box-shadow: 0 0 50px rgba(99, 102, 241, 0.2);
+    }
+    .login-logo { width: 80px; margin-bottom: 20px; filter: drop-shadow(0 0 10px var(--primary)); }
+    .login-input { 
+        width: 100%; background: #111; border: 1px solid #333; color: white; 
+        padding: 12px; border-radius: 8px; margin-bottom: 15px; text-align: center; letter-spacing: 2px;
+        -webkit-appearance: none;
+        box-shadow: none;
+    }
+    .login-input:focus {
+        background: #181818; 
+        border-color: var(--primary); 
+    }
+    .login-btn {
+        width: 100%; background: linear-gradient(90deg, var(--primary), var(--accent));
+        border: none; padding: 12px; border-radius: 8px; color: white; font-weight: 700; cursor: pointer;
+    }
+
+    /* MAIN APP (Hidden initially) */
+    #app-container { display: none; width: 100%; height: 100%; }
+
+    /* --- Existing Styles Preserved --- */
+    #splash-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--bg-dark); z-index: 99999; display: flex; justify-content: center; align-items: center; transition: opacity 0.8s ease; }
+    .splash-corner { position: absolute; border-radius: 50%; background-color: rgba(255, 255, 255, 0.02); z-index: 1; pointer-events: none; backdrop-filter: blur(5px); }
+    .splash-corner.top-left { width: 90vw; height: 90vw; transform: translate(-50%, -50%); top: 0; left: 0; border: 2px solid var(--primary); box-shadow: 0 0 50px rgba(99, 102, 241, 0.3); }
+    .splash-corner.bottom-right { width: 95vw; height: 95vw; transform: translate(50%, 50%); bottom: 0; right: 0; border: 2px solid var(--gold); box-shadow: 0 0 50px rgba(251, 191, 36, 0.2); }
+    .splash-logo { position: relative; z-index: 2; animation: pulseLogo 2s infinite ease-in-out; }
+    @keyframes pulseLogo { 0% { transform: scale(0.95); opacity: 0.8; } 50% { transform: scale(1.05); opacity: 1; } 100% { transform: scale(0.95); opacity: 0.8; } }
+    .splash-logo img { width: 30vw; max-width: 200px; height: auto; filter: invert(1) drop-shadow(0 0 20px rgba(99, 102, 241, 0.6)); display: block; }
+    
+    .content-wrapper { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow-y: auto; padding: 20px; padding-bottom: 100px; display: flex; flex-direction: column; align-items: center; opacity: 0; transition: opacity 0.5s ease; }
+    .page-container { width: 100%; max-width: 420px; display: none; opacity: 0; transform: translateY(10px); transition: opacity 0.3s ease, transform 0.3s ease; }
+    .page-container.active { display: flex; flex-direction: column; align-items: center; opacity: 1; transform: translateY(0); }
+    h1 { margin: 5px 0 20px; background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 22px; font-weight: 900; letter-spacing: 1px; text-align: center; filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.5)); }
+    .card { width: 100%; background: var(--card-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: 24px; padding: 20px; margin-bottom: 15px; box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5); }
+    #stats-box { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; text-align: center; }
+    .stat-item { background: var(--glass); padding: 12px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); }
+    .stat-item.full { grid-column: span 2; display: flex; justify-content: space-between; align-items: center; padding: 12px 20px;}
+    .stat-label { font-size: 10px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-val { font-size: 18px; font-weight: 700; margin-top: 4px; }
+    #bot-control, #mode-control { display: flex; gap: 12px; width: 100%; margin-bottom: 15px; }
+    button { flex: 1; padding: 14px; border: none; border-radius: 16px; font-weight: 700; cursor: pointer; transition: transform 0.2s; font-size: 13px; color: white; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); }
+    button:active { transform: scale(0.95); }
+    #startButton { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+    #stopButton { background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); }
+    #stopButton:disabled { opacity: 0.5; filter: grayscale(1); }
+    .btn-mode { background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: #ccc; }
+    .btn-mode.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 0 20px rgba(99, 102, 241, 0.4); }
+    input { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border); padding: 15px; border-radius: 14px; color: white; margin: 8px 0 15px; outline: none; font-family: inherit; }
+    input:focus { border-color: var(--primary); }
+    #prediction-box { text-align: center; border: 1px solid rgba(99, 102, 241, 0.3); position: relative; overflow: hidden; padding-bottom: 15px; }
+    #prediction-box::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: linear-gradient(90deg, var(--primary), var(--accent)); box-shadow: 0 0 15px var(--primary); }
+    .pred-title { font-size: 11px; letter-spacing: 2px; opacity: 0.8; margin-bottom: 5px; font-weight: 700; }
+    #prediction { font-size: 56px; font-weight: 900; margin: 10px 0; text-shadow: 0 0 40px rgba(255,255,255,0.1); display: block; line-height: 1; transform: scale(1); transition: transform 0.3s; }
+    .BIG { color: var(--success); text-shadow: 0 0 30px rgba(16, 185, 129, 0.5) !important; }
+    .SMALL { color: var(--danger); text-shadow: 0 0 30px rgba(239, 68, 68, 0.5) !important; }
+    .bet-box { background: rgba(251, 191, 36, 0.15); border: 1px solid rgba(251, 191, 36, 0.4); border-radius: 12px; padding: 10px; margin: 10px 20px; color: var(--gold); font-size: 15px; font-weight: 700; display: flex; justify-content: center; gap: 10px; box-shadow: 0 0 15px rgba(251, 191, 36, 0.1); }
+    .info-row { display: flex; justify-content: space-between; padding: 0 20px; font-size: 12px; color: #888; margin-top: 15px; }
+    #timer-box { display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15)); border: 1px solid rgba(99,102,241,0.2); }
+    #liveTime { font-family: monospace; font-size: 26px; font-weight: 700; color: var(--accent); }
+    .tabs { display: flex; background: rgba(0,0,0,0.3); padding: 5px; border-radius: 16px; margin-bottom: 15px; width: 100%; border: 1px solid var(--border); }
+    .tabs button { background: transparent; box-shadow: none; padding: 12px; color: #888; border-radius: 12px; }
+    .tabs button.active { background: var(--card-bg); color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.2); transform: scale(1.02); }
+    #history-wrap { width: 100%; height: 280px; overflow-y: auto; border-radius: 16px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); scrollbar-width: thin; scrollbar-color: var(--primary) transparent; }
+    table { width: 100%; border-collapse: collapse; }
+    th { position: sticky; top: 0; background: #1a1a20; padding: 12px 8px; font-size: 11px; color: #aaa; z-index: 2; }
+    td { padding: 10px 8px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
+    .status { padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 0.5px; }
+    .status.win { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+    .status.loss { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+    .status.pending { background: rgba(255, 200, 0, 0.2); color: #fbbf24; }
+    .switch-wrap { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #aaa; cursor: pointer; }
+    .fa-volume-high { color: var(--success); } .fa-volume-xmark { color: var(--danger); }
+    .footer-brand { text-align: center; margin-top: 25px; margin-bottom: 5px; font-size: 10px; font-weight: 900; letter-spacing: 3px; color: var(--gold); opacity: 0.5; text-shadow: 0 0 10px rgba(251, 191, 36, 0.2); text-transform: uppercase; }
+    .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; height: var(--nav-height); background: rgba(15, 15, 20, 1); border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-around; align-items: center; z-index: 2000; padding-bottom: env(safe-area-inset-bottom); box-shadow: 0 -5px 20px rgba(0,0,0,0.8); }
+    .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #555; font-size: 10px; cursor: pointer; transition: all 0.2s; width: 60px; height: 100%; }
+    .nav-item i { font-size: 20px; margin-bottom: 4px; }
+    .nav-item.active { color: var(--primary); }
+    .nav-item.active i { transform: translateY(-2px); text-shadow: 0 0 10px var(--primary); }
+    .game-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; }
+    .game-btn { background: linear-gradient(145deg, rgba(255,255,255,0.03), rgba(0,0,0,0.2)); border: 1px solid var(--border); padding: 25px 15px; border-radius: 20px; text-align: center; color: white; font-weight: 700; cursor: pointer; transition: all 0.3s ease; display: block; }
+    .game-btn:hover { border-color: var(--primary); transform: translateY(-5px); box-shadow: 0 10px 25px rgba(99, 102, 241, 0.2); background: linear-gradient(145deg, rgba(99,102,241,0.1), rgba(0,0,0,0.3)); }
+    .game-btn i { font-size: 28px; display: block; margin-bottom: 10px; color: var(--gold); }
+    #game-iframe-container { position: fixed; top: 0; left: 0; width: 100%; bottom: var(--nav-height); background: #000; z-index: 1500; display: none; }
+    #game-iframe-container iframe { width: 100%; height: 100%; border: none; display: block; }
+</style>
+</head>
+<body oncontextmenu="return false;">
+
+<div id="pc-block-overlay">
+    <i class="fa-solid fa-desktop" style="font-size: 50px; color: var(--danger); margin-bottom: 20px;"></i>
+    <h2 style="color:white; margin:0;">ACCESS DENIED</h2>
+    <p style="color:#aaa; font-size: 12px; margin-top: 10px;">This software is protected.<br>Use a Mobile Device to access.</p>
+</div>
+
+<div id="security-overlay">
+    <div class="login-box">
+        <img src="https://raw.githubusercontent.com/Rajpromods1/raj-x-logo/refs/heads/main/X.png" class="login-logo" alt="Logo">
+        <h3 style="margin: 0 0 20px; color: white;">RAJ MODS LOGIN</h3>
+        <form id="loginForm"> 
+            <input type="password" id="keyInput" class="login-input" placeholder="ENTER ADMIN KEY" required />
+            <button type="submit" class="login-btn">UNLOCK</button>
+        </form>
+        <p id="loginMsg" style="color:var(--danger); font-size:10px; margin-top:15px; min-height:15px;">Enter Admin Key to Continue...</p>
+    </div>
+</div>
+
+<div id="app-container">
+    <div id="splash-screen">
+        <div class="splash-corner top-left"></div>
+        <div class="splash-corner bottom-right"></div>
+        <div class="splash-logo"><img src="https://raw.githubusercontent.com/Rajpromods1/raj-x-logo/refs/heads/main/X.png" alt="X Logo" /></div>
+    </div>
+
+    <div class="content-wrapper" id="mainContent">
+        <h1>RAJ MODS <span style="color:var(--gold)">ULTRA</span></h1>
+        <div id="home-section" class="page-container active">
+            <div id="stats-box" class="card">
+                <div class="stat-item"><div class="stat-label">Total Preds</div><div class="stat-val" id="totalPreds">0</div></div>
+                <div class="stat-item"><div class="stat-label">Accuracy</div><div class="stat-val" id="accuracy">0%</div></div>
+                <div class="stat-item"><div class="stat-label">Wins</div><div class="stat-val" id="totalWins" style="color:var(--success)">0</div></div>
+                <div class="stat-item"><div class="stat-label">Losses</div><div class="stat-val" id="totalLosses" style="color:var(--danger)">0</div></div>
+                <div class="stat-item full">
+                    <div class="switch-wrap" onclick="toggleSound()"><i id="soundIcon" class="fa-solid fa-volume-high"></i> <span id="soundText">Sound ON</span></div>
+                    <div style="font-size:12px; color:#888;"><i class="fa-solid fa-circle" id="serverDot" style="color:red; font-size:8px; margin-right:4px;"></i> <span id="statusText">Stopped</span></div>
+                </div>
+            </div>
+            <div id="mode-control"><button class="btn-mode" onclick="setMode(30)">⚡ 30 Sec</button><button class="btn-mode active" onclick="setMode(60)">⏱ 1 Min</button></div>
+            <div id="bot-control"><button id="startButton"><i class="fa-solid fa-play"></i> START BOT</button><button id="stopButton" disabled><i class="fa-solid fa-stop"></i> STOP</button></div>
+            <div id="timer-box" class="card" style="padding: 15px 25px;"><div style="font-size:12px; color:#aaa;">Period <span id="period" style="color:#fff; font-weight:700; margin-left:5px">--</span></div><div id="liveTime">00:00</div></div>
+            <div id="prediction-box" class="card">
+                <div class="pred-title">AI PREDICTION</div><span id="prediction" class="BIG">WAITING</span>
+                <div class="bet-box"><span><i class="fa-solid fa-coins"></i> Bet:</span><span id="betAmount">₹10</span></div>
+                <div class="info-row"><div><i class="fa-solid fa-chart-line"></i> <span id="patternName">Analyzing...</span></div><div>Conf: <span id="confidence">0</span>%</div></div>
+            </div>
+            <div class="tabs"><button id="predTab" class="active">History</button><button id="gameTab">Game Data</button></div>
+            <div id="history-wrap"><table><thead id="tableHead"><tr><th>Period</th><th>Pred</th><th>Res</th><th>Sts</th></tr></thead><tbody id="tableBody"><tr><td colspan="4" style="padding:20px; opacity:0.5;">Waiting for data...</td></tr></tbody></table></div>
+            <div class="footer-brand">POWERED BY RAJ MODS</div>
+        </div>
+        <div id="game-section" class="page-container">
+            <div class="card" style="text-align:center; padding-top:30px;">
+                <h2 style="margin:0 0 25px; color:var(--primary); letter-spacing:1px;"><i class="fa-solid fa-rocket"></i> LAUNCH GAME</h2>
+                <div class="game-grid">
+                    <div class="game-btn" onclick="launchGame('http://www.tashanwin.ink/#/register?invitationCode=817673612782')"><i class="fa-solid fa-fire"></i>TASHAN</div>
+                    <div class="game-btn" onclick="launchGame('https://dmwin1.com/#/register?invitationCode=36675230002')"><i class="fa-solid fa-diamond"></i>DM WIN</div>
+                    <div class="game-btn" onclick="launchGame('https://tgdream.pro/#/register?invitationCode=33425799289')"><i class="fa-solid fa-flag-checkered"></i>TIRANGA</div>
+                    <div class="game-btn" onclick="launchGame('https://91appt.com/#/main')"><i class="fa-solid fa-crown"></i>91 CLUB</div>
+                </div>
+                <p style="margin-top:20px; font-size:11px; color:#555;">Games run fullscreen above navigation.</p>
+            </div>
+        </div>
+        <div id="profile-section" class="page-container">
+            <div id="wallet-setup" class="card" style="border-color:var(--gold);">
+                <h3 style="margin-top:0; font-size:14px; color:var(--gold);"><i class="fa-solid fa-wallet"></i> Fund Management</h3>
+                <p style="font-size:11px; color:#aaa; margin-bottom:12px;">Enter your total game balance below.</p>
+                <input id="walletInput" type="number" placeholder="Enter Amount (e.g. 1000)" />
+                <button onclick="applyWallet()" style="background: var(--gold); color:black; margin-top:5px; box-shadow:0 5px 15px rgba(251, 191, 36, 0.3);">Update Plan</button>
+                <div id="plan-display" style="font-size:12px; color:#fff; background:rgba(0,0,0,0.3); padding:15px; border-radius:12px; display:none; margin-top:15px; border:1px dashed var(--gold);">Plan: <span id="plan-string" style="color:var(--success); font-weight:700;">--</span></div>
+            </div>
+            <div id="telegram-setup" class="card"> 
+                <h3 style="margin-top:0; font-size:14px;"><i class="fa-brands fa-telegram"></i> Telegram Config</h3>
+                <input id="botToken" placeholder="Bot Token" />
+                <input id="channelId" placeholder="Chat ID" />
+                <button id="testBtn" style="background:var(--primary); margin-top:5px;">Test Connection</button>
+            </div>
+            <div class="card" style="text-align:center; padding:25px;">
+                <i class="fa-solid fa-user-circle" style="font-size:50px; color:var(--text); margin-bottom:15px; text-shadow:0 0 20px rgba(255,255,255,0.2);"></i>
+                <div style="font-size:16px; font-weight:700;">Admin User</div>
+                <div style="font-size:12px; color:#666; margin-top:5px;">Ryzen_ultra_ai v2.0</div>
+            </div>
+        </div>
+    </div>
+    <div id="game-iframe-container"><iframe id="game-iframe" src="" allowfullscreen></iframe></div>
+    <div class="bottom-nav">
+        <div class="nav-item active" onclick="switchTab('home')"><i class="fa-solid fa-house"></i><span>Home</span></div>
+        <div class="nav-item" onclick="switchTab('game')"><i class="fa-solid fa-gamepad"></i><span>Game</span></div>
+        <div class="nav-item" onclick="switchTab('profile')"><i class="fa-solid fa-user"></i><span>Profile</span></div>
+    </div>
+</div>
+
+<script>
+/**
+ * RYZEN SECURITY SUITE WITH DEVICE TRACKING
+ * 1. Mobile Lock
+ * 2. Firebase Key Protection
+ * 3. IP & Device Info Tracking
+ * 4. ONE KEY - ONE DEVICE RESTRICTION
+ */
+
+// 1. MOBILE LOCK (Simple User Agent Check)
+(function(){
+    const ua = navigator.userAgent.toLowerCase();
+    const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(ua);
+    if (!isMobile) {
+        document.getElementById('pc-block-overlay').style.display = 'flex';
+        document.getElementById('security-overlay').remove();
+        throw new Error("ACCESS DENIED: MOBILE ONLY");
+    }
+})();
+
+// 2. FIREBASE CONFIGURATION
+const firebaseConfig = {
+    apiKey: "AIzaSyAfHLN5NEFbxnVmDU0UCXuKklrB3Gyr0VM",
+    authDomain: "ryzen-trader.firebaseapp.com",
+    databaseURL: "https://ryzen-trader-default-rtdb.firebaseio.com",
+    projectId: "ryzen-trader",
+    storageBucket: "ryzen-trader.firebasestorage.app",
+    messagingSenderId: "540361914904",
+    appId: "1:540361914904:web:a1ed0b28e07f5e6f11e16d",
+    measurementId: "G-GQKHD1JC0M"
+};
+
+let database = null;
+let attempts = 0;
+
+try {
+    const app = firebase.initializeApp(firebaseConfig);
+    database = firebase.database();
+    console.log("Firebase initialized successfully");
+    document.getElementById('loginMsg').textContent = "Firebase Ready. Enter Key.";
+} catch (e) {
+    console.error("Firebase Initialization Error:", e);
+    document.getElementById('loginMsg').textContent = "ERROR: Cannot connect to Firebase. Check Network.";
+    document.querySelector('.login-btn').disabled = true;
+}
+
+// Function to generate unique device ID
+function generateDeviceId() {
+    // Try to get existing device ID from localStorage
+    let deviceId = localStorage.getItem('deviceId');
+    
+    if (!deviceId) {
+        // Generate a new device ID based on browser fingerprint
+        const navigatorInfo = navigator.userAgent + navigator.language + navigator.hardwareConcurrency + screen.width + screen.height;
+        const timeStamp = Date.now();
+        const random = Math.random().toString(36).substring(2, 15);
+        
+        // Create hash
+        let hash = 0;
+        for (let i = 0; i < navigatorInfo.length; i++) {
+            const char = navigatorInfo.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+        
+        deviceId = 'dev_' + Math.abs(hash).toString(16) + '_' + timeStamp.toString(16) + '_' + random;
+        localStorage.setItem('deviceId', deviceId);
+    }
+    
+    return deviceId;
+}
+
+async function getIPAddress() {
+    try {
+        const services = [
+            'https://api.ipify.org?format=json',
+            'https://api64.ipify.org?format=json',
+            'https://ipinfo.io/json'
+        ];
+        
+        for (const service of services) {
+            try {
+                const response = await fetch(service, { timeout: 3000 });
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.ip || data.ipAddress || 'Unknown';
+                }
+            } catch (e) {
+                console.log(`IP service ${service} failed, trying next...`);
+            }
+        }
+        return 'Unknown';
+    } catch (error) {
+        console.error("Failed to get IP address:", error);
+        return 'Unknown';
+    }
+}
+
+function getDeviceInfo() {
+    const ua = navigator.userAgent;
+    let deviceName = 'Unknown Device';
+    let os = 'Unknown OS';
+    let browser = 'Unknown Browser';
+
+    if (/android/i.test(ua)) {
+        os = 'Android';
+        const modelMatch = ua.match(/Android.*Build\/([^);]+)/) || 
+                          ua.match(/Android\s+([^);]+)/) ||
+                          ua.match(/; ([^);]+) Build\//);
+        deviceName = modelMatch ? modelMatch[1] : 'Android Device';
+    } else if (/iphone|ipad|ipod/i.test(ua)) {
+        os = 'iOS';
+        deviceName = /iphone/i.test(ua) ? 'iPhone' : /ipad/i.test(ua) ? 'iPad' : 'iPod';
+        const versionMatch = ua.match(/OS\s+([\d_]+)/);
+        if (versionMatch) deviceName += ' ' + versionMatch[1].replace(/_/g, '.');
+    } else if (/windows/i.test(ua)) {
+        os = 'Windows';
+        deviceName = 'Windows PC';
+    } else if (/macintosh/i.test(ua)) {
+        os = 'macOS';
+        deviceName = 'Mac';
+    } else if (/linux/i.test(ua)) {
+        os = 'Linux';
+        deviceName = 'Linux PC';
+    }
+
+    if (/chrome/i.test(ua) && !/edge/i.test(ua)) {
+        browser = 'Chrome';
+        const versionMatch = ua.match(/Chrome\/([\d.]+)/);
+        if (versionMatch) browser += ' ' + versionMatch[1];
+    } else if (/firefox/i.test(ua)) {
+        browser = 'Firefox';
+        const versionMatch = ua.match(/Firefox\/([\d.]+)/);
+        if (versionMatch) browser += ' ' + versionMatch[1];
+    } else if (/safari/i.test(ua) && !/chrome/i.test(ua)) {
+        browser = 'Safari';
+        const versionMatch = ua.match(/Version\/([\d.]+)/);
+        if (versionMatch) browser += ' ' + versionMatch[1];
+    } else if (/edge/i.test(ua)) {
+        browser = 'Edge';
+        const versionMatch = ua.match(/Edge\/([\d.]+)/);
+        if (versionMatch) browser += ' ' + versionMatch[1];
+    }
+
+    return {
+        deviceName: deviceName,
+        os: os,
+        browser: browser,
+        userAgent: ua.substring(0, 200),
+        screenSize: `${window.screen.width}x${window.screen.height}`,
+        platform: navigator.platform,
+        language: navigator.language,
+        vendor: navigator.vendor || 'Unknown'
+    };
+}
+
+function loginSuccess() {
+    document.getElementById('security-overlay').style.opacity = '0';
+    setTimeout(() => {
+        document.getElementById('security-overlay').style.display = 'none';
+        document.getElementById('app-container').style.display = 'block';
+        startAppLogic();
+    }, 500);
+}
+
+async function checkAdminKey(key) {
+    const msg = document.getElementById('loginMsg');
+    const inputField = document.getElementById('keyInput');
+    const loginBtn = document.querySelector('.login-btn');
+
+    if (!database) {
+        msg.textContent = "Error: Firebase initialization failed.";
+        return;
+    }
+
+    msg.textContent = "Checking Key...";
+    loginBtn.disabled = true;
+
+    try {
+        // Check key in Firebase
+        const snapshot = await database.ref("accessKeys/" + key).once('value');
+        
+        if (snapshot.exists()) {
+            const userData = snapshot.val();
+            
+            // Check if key is enabled
+            if (userData.UkeyEnabled !== "yes") {
+                msg.textContent = "KEY DISABLED";
+                inputField.value = "";
+                loginBtn.disabled = false;
+                return;
+            }
+            
+            // Check expiration
+            const now = Date.now();
+            if (userData.expiry && now > userData.expiry) {
+                msg.textContent = "KEY EXPIRED";
+                inputField.value = "";
+                loginBtn.disabled = false;
+                return;
+            }
+            
+            // Check coins
+            if (!userData.coin || userData.coin <= 0) {
+                msg.textContent = "INSUFFICIENT COINS";
+                inputField.value = "";
+                loginBtn.disabled = false;
+                return;
+            }
+            
+            // === ONE DEVICE RESTRICTION CHECK ===
+            const currentDeviceId = generateDeviceId();
+            const savedDeviceId = userData.deviceId || "";
+            
+            // If deviceId is empty (first time login), bind this device
+            if (savedDeviceId === "") {
+                // First time login, bind this device
+                await database.ref("accessKeys/" + key).update({
+                    deviceId: currentDeviceId,
+                    deviceBoundTime: Date.now()
+                });
+            } 
+            // If deviceId exists but doesn't match current device
+            else if (savedDeviceId !== currentDeviceId) {
+                msg.textContent = "KEY ALREADY IN USE ON ANOTHER DEVICE";
+                inputField.value = "";
+                loginBtn.disabled = false;
+                
+                // Log this attempt
+                const ipAddress = await getIPAddress();
+                const deviceInfo = getDeviceInfo();
+                
+                const intrusionData = {
+                    timestamp: Date.now(),
+                    key: key,
+                    attemptedDeviceId: currentDeviceId,
+                    originalDeviceId: savedDeviceId,
+                    ipAddress: ipAddress,
+                    deviceInfo: deviceInfo,
+                    type: "MULTI_DEVICE_ATTEMPT"
+                };
+                
+                // Save to intrusion log
+                await database.ref("intrusionLogs/" + Date.now()).set(intrusionData);
+                return;
+            }
+            // If deviceId matches, allow login
+            // =====================================
+            
+            // Get IP address and device info
+            msg.textContent = "Getting device information...";
+            const ipAddress = await getIPAddress();
+            const deviceInfo = getDeviceInfo();
+            
+            // Create login history entry
+            const loginTime = Date.now();
+            const loginEntry = {
+                timestamp: loginTime,
+                ipAddress: ipAddress,
+                ...deviceInfo
+            };
+            
+            // Update user data with login info
+            const updates = {
+                lastLogin: loginTime,
+                lastIP: ipAddress,
+                lastDevice: deviceInfo.deviceName,
+                lastBrowser: deviceInfo.browser,
+                loginCount: (userData.loginCount || 0) + 1,
+                // Update device info on every successful login
+                deviceInfo: deviceInfo,
+                deviceLastActive: loginTime
+            };
+            
+            // Add to login history (keep last 10 logins)
+            const loginHistory = userData.loginHistory || [];
+            loginHistory.unshift(loginEntry);
+            if (loginHistory.length > 10) {
+                loginHistory.length = 10;
+            }
+            updates.loginHistory = loginHistory;
+            
+            // Update Firebase
+            await database.ref("accessKeys/" + key).update(updates);
+            
+            // Store user data in localStorage
+            localStorage.setItem('userKey', key);
+            localStorage.setItem('userData', JSON.stringify({...userData, ...updates}));
+            
+            // Success
+            msg.textContent = "LOGIN SUCCESSFUL! Welcome to RAJ MODS AI.";
+            loginSuccess();
+            return;
+        }
+        
+        // If key not found
+        attempts++;
+        msg.textContent = "INVALID KEY (" + attempts + "/3)";
+        inputField.value = "";
+        
+        if(attempts >= 3) {
+            msg.textContent = "SYSTEM LOCKED. Contact Admin.";
+            setTimeout(() => { 
+                document.body.innerHTML = "<div style='background:#000;color:#fff;height:100vh;display:flex;justify-content:center;align-items:center;'><h1>SYSTEM LOCKED</h1></div>"; 
+            }, 1000);
+        }
+
+    } catch (error) {
+        console.error("Login Error:", error);
+        msg.textContent = "LOGIN ERROR: Check Network Connection.";
+    } finally {
+        loginBtn.disabled = false;
+    }
+}
+
+// Prevent form submission reload
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const key = document.getElementById('keyInput').value.trim();
+    if (key) {
+        checkAdminKey(key);
+    } else {
+        document.getElementById('loginMsg').textContent = "Please enter a key";
+    }
+});
+
+// --- APP LOGIC WRAPPED (Only runs after login) ---
+function startAppLogic() {
+    const _0x4e2a=["\x68\x74\x74\x70\x73\x3a\x2f\x2f\x61\x70\x69\x2e\x62\x64\x67\x38\x38\x7a\x66\x2e\x63\x6f\x6d\x2f\x61\x70\x69\x2f\x77\x65\x62\x61\x70\x69\x2f\x47\x65\x74\x47\x61\x6d\x65\x49\x73\x73\x75\x65","\x68\x74\x74\x70\x73\x3a\x2f\x2f\x64\x72\x61\x77\x2e\x61\x72\x2d\x6c\x6f\x74\x74\x65\x72\x79\x30\x31\x2e\x63\x6f\x6d\x2f\x57\x69\x6e\x47\x6f\x2f\x57\x69\x6e\x47\x6f\x5f\x33\x30\x53\x2f\x47\x65\x74\x48\x69\x73\x74\x6f\x72\x79\x49\x73\x73\x75\x65\x50\x61\x67\x65\x2e\x6a\x73\x6f\x6e","\x68\x74\x74\x70\x73\x3a\x2f\x2f\x64\x72\x61\x77\x2e\x61\x72\x2d\x6c\x6f\x74\x74\x65\x72\x79\x30\x31\x2e\x63\x6f\x6d\x2f\x57\x69\x6e\x47\x6f\x2f\x57\x69\x6e\x47\x6f\x5f\x31\x4d\x2f\x47\x65\x74\x48\x69\x73\x74\x6f\x72\x79\x49\x73\x73\x75\x65\x50\x61\x67\x65\x2e\x6a\x73\x6f\x6e"];
+    setTimeout(function(){document.getElementById('splash-screen').style.opacity='0',document.getElementById('mainContent').style.opacity='1',setTimeout(()=>{document.getElementById('splash-screen').style.display='none'},800)},5e3);
+    const iframeContainer=document.getElementById('game-iframe-container'),gameIframe=document.getElementById('game-iframe');let isGameRunning=!1;
+    window.switchTab=function(e){document.querySelectorAll('.page-container').forEach(e=>{e.classList.remove('active')}),document.querySelectorAll('.nav-item').forEach(e=>{e.classList.remove('active')}),'home'===e?(document.getElementById('home-section').classList.add('active'),document.querySelectorAll('.nav-item')[0].classList.add('active'),iframeContainer.style.display='none'):'game'===e?(document.querySelectorAll('.nav-item')[1].classList.add('active'),isGameRunning?(iframeContainer.style.display='block',document.getElementById('game-section').classList.remove('active')):(document.getElementById('game-section').classList.add('active'),iframeContainer.style.display='none')):'profile'===e&&(document.getElementById('profile-section').classList.add('active'),document.querySelectorAll('.nav-item')[2].classList.add('active'),iframeContainer.style.display='none')};
+    window.launchGame=function(e){isGameRunning=!0,gameIframe.src=e,iframeContainer.style.display='block',document.getElementById('game-section').classList.remove('active')};
+    window.applyWallet=function(){const e=document.getElementById("walletInput").value;e&&parseInt(e)>0?(calculate6LevelPlan(parseInt(e)),alert("✅ Plan Updated Successfully!")):alert("❌ Please enter a valid amount.")};
+    window.setMode=function(e){intervalSec=e,historyURL=30===e?_0x4e2a[1]:_0x4e2a[2],document.querySelectorAll('.btn-mode').forEach(e=>e.classList.remove('active')),30===e?qs(".btn-mode:first-child").classList.add("active"):qs(".btn-mode:last-child").classList.add("active"),lastPeriod=null,predictionHistory.length=0,qs("#period").textContent="Wait...",qs("#walletInput").value&&parseInt(qs("#walletInput").value)>0?calculate6LevelPlan(parseInt(qs("#walletInput").value)):(currentBet=10,currentLevelIndex=0),renderTable(),updateStatsBox()};
+    window.toggleSound=function(){soundOn=!soundOn;const e=qs("#soundIcon");soundOn?(e.className="fa-solid fa-volume-high",qs("#soundText").textContent="Sound ON"):(e.className="fa-solid fa-volume-xmark",qs("#soundText").textContent="Muted")};
+    
+    const CFG_60={typeId:1},CFG_30={typeId:3},SND_WIN=new Audio("https://cdn.pixabay.com/audio/2021/08/04/audio_12b0c7443c.mp3"),SND_LOSS=new Audio("https://cdn.pixabay.com/audio/2021/08/09/audio_88447e769f.mp3"),SND_START=new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_7368037388.mp3"),IMG_START="https://raw.githubusercontent.com/RYZENMOD/Prediction-banner/d84b2806692cd45a30b0e56c96910a1b35370ea1/Start%20session%20banner.png",IMG_PRED="https://raw.githubusercontent.com/RYZENMOD/Prediction-banner/d84b2806692cd45a30b0e56c96910a1b35370ea1/Prediction%20banner.png",IMG_STOP="https://raw.githubusercontent.com/RYZENMOD/Prediction-banner/d84b2806692cd45a30b0e56c96910a1b35370ea1/Stop%20session%20banner.png",STICK_FIXED="CAACAgUAAxkBAAEDEC9pCVVRUpjzq5JD0XXds7EfRQje15wACuxMAAtZgYVZaFxCncOnSvh4E",STICKER_POOL_RANDOM=["CAACAgQAAxkBAAEDEGlpC0W3zuFpqApvI9QFy1ueCMPHIgACcxIAAjupeFAWe8eIo-19-B4E","CAACAgUAAxkBAAEPuN5pDbcEyco-gtAUPuymnGbvOcBqGwACBQYAAk1aOVXI47-HBpfiKzYE","CAACAgUAAxkBAAEPuOBpDbcPRoP0JFmzV-htZ6NensDGqQAC_AYAArAoOVVxrvjZwQvydjYE","CAACAgUAAxkBAAEPuOJpDbccmUSeIzzpT2jlxr_7F4A39AACvAWAAgZ2OFWfxfHVhXVCRjYE","CAACAgUAAxkBAAEPuORpDbeH9L3OL4w3rwyIW10GVKwvogACKRQAApN3OFTCh4tS6Q2ZczYE","CAACAgUAAxkBAAEPuOZpDbeWjmEJKUG3bvPM22VAL-41uQACPhIAAi970VUswOXvMWHwiDYE","CAACAgUAAxkBAAEPuOhpDbfZqZw0SgFxzzFb3hGtFvaRswACOREAAkVT2VUaN-wmLuBpYDYE","CAACAgUAAxkBAAEPuOppDbfpT4KKVP5jn5Pi86YoHD3ELQACdBcAAgZn0VUVGiPuE4aJujYE","CAACAgUAAxkBAAEPuOxpDbgQpF5psXHINn_zTZwW1By1CgAC5BUAAgw9uFYOlHPZ7wcsbzYE"];
+    let intervalSec=60,historyURL=_0x4e2a[2],running=!1,loopId=null,soundOn=!0,lastPeriod=null,lastPrediction="BIG",nextSendAllowedAt=0,isSendingStickers=!1,baseBet=10,currentBet=10,betLevels=[10,30,90,270,810,2430],currentLevelIndex=0;const stats={wins:0,losses:0,get accuracy(){const e=this.wins+this.losses;return e?(this.wins/e*100).toFixed(0):"0"}},predictionHistory=[];let latestGameHistory=[];const qs=e=>document.querySelector(e),pad2=e=>String(e).padStart(2,"0"),bigSmall=e=>e>=5?"BIG":"SMALL",colorOf=e=>[1,3,7,9].includes(e)?"Green":[2,4,6,8].includes(e)?"Red":"Violet",nowSec=()=>Date.now();
+    
+    const lastResults = {
+        30: [],
+        60: []
+    };
+    
+    function calculate6LevelPlan(e){let t=Math.floor(e/70);t<1&&(t=1),betLevels=[1*t,2*t,4*t,8*t,16*t,32*t],qs("#plan-string").textContent=betLevels.join(" - "),qs("#plan-display").style.display="block",currentBet=betLevels[0],currentLevelIndex=0,qs("#betAmount").textContent="₹"+currentBet}function speakVoice(e){if(!window.speechSynthesis)return;const t=new SpeechSynthesisUtterance(e);t.lang='hi-IN',t.rate=1,window.speechSynthesis.speak(t)}function setButtons(){qs("#startButton").disabled=running,qs("#stopButton").disabled=!running,qs("#serverDot").style.color=running?"var(--success)":"red",qs("#statusText").textContent=running?"Active":"Stopped",running&&soundOn&&SND_START.play().catch(()=>{})}
+    function updateStatsBox(){qs("#totalPreds").textContent=predictionHistory.length,qs("#totalWins").textContent=stats.wins,qs("#totalLosses").textContent=stats.losses,qs("#accuracy").textContent=stats.accuracy+"%"}function updateTimer(){const e=new Date;e.setTime(e.getTime()+6e4*(e.getTimezoneOffset()+330));const t=60*e.getMinutes()+e.getSeconds(),n=intervalSec-t%intervalSec;return qs("#liveTime").textContent=`00:${pad2(n)}`,n}function tgCreds(){return qs("#botToken").value&&qs("#channelId").value?{token:qs("#botToken").value,chat:qs("#channelId").value}:null}async function tgSendPhoto(e,t){const n=tgCreds();if(!n)return null;try{const a=await fetch(`https://api.telegram.org/bot${n.token}/sendPhoto`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chat_id:n.chat,photo:e,caption:t,parse_mode:"Markdown"})}),r=await a.json();return r.ok?r.result.message_id:null}catch{return null}}async function tgSendMessage(e){const t=tgCreds();if(!t)return null;try{return await fetch(`https://api.telegram.org/bot${t.token}/sendMessage`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chat_id:t.chat,text:e,parse_mode:"Markdown"})}),!0}catch{return!1}}async function tgDelete(e){const t=tgCreds();t&&e&&fetch(`https://api.telegram.org/bot${t.token}/deleteMessage`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chat_id:t.chat,message_id:e})}).catch(()=>{})}async function tgSendStickers(){if(isSendingStickers)return;isSendingStickers=!0;const e=tgCreds();if(!e)return isSendingStickers=!1,void 0;const t=async t=>{try{await fetch(`https://api.telegram.org/bot${e.token}/sendSticker`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chat_id:e.chat,sticker:t})})}catch{}},n=[...STICKER_POOL_RANDOM].sort(()=>.5-Math.random());await t(STICK_FIXED),await new Promise(e=>setTimeout(e,1e3)),await t(n[0]),await new Promise(e=>setTimeout(e,1e3)),await t(n[1]),await new Promise(e=>setTimeout(e,1e3)),await t(n[2]),nextSendAllowedAt=nowSec()+15e3,isSendingStickers=!1}async function sendStartStop(e){await tgSendPhoto("start"===e?IMG_START:IMG_STOP,"start"===e?"RAJ MODS – System Active":"RAJ MODS – System Stopped")}
+
+    // PREDICTION LOGICS
+    const _0x9f3a = function(h) {
+        if (h.length < 5) return {p: Math.random() > 0.5 ? "BIG" : "SMALL", c: 60, t: "Random Scan"};
+        
+        const numbers = h.map(item => parseInt(item.number, 10) % 10);
+        const results = h.map(item => item.resultType);
+        
+        function serverGaussianPredictor() {
+            if (numbers.length < 10) return { result: Math.random() < 0.5 ? 'SMALL' : 'BIG', probability: 78 };
+            const mean = numbers.reduce((a, b) => a + b, 0) / numbers.length;
+            const result = mean >= 5 ? 'BIG' : 'SMALL';
+            const probability = 80 + Math.min(Math.abs(mean - 5) * 4, 15);
+            return { result, probability: Math.min(99, Math.max(75, Math.round(probability))) };
+        }
+        
+        function serverSmartHybrid() {
+            if (numbers.length === 0) return { result: Math.random() < 0.5 ? 'BIG' : 'SMALL', probability: 80 };
+            const last = numbers[0];
+            const streak = numbers.slice(0, 5).every(n => n >= 5) ? 'BIG' : numbers.slice(0, 5).every(n => n < 5) ? 'SMALL' : null;
+            const bigCount = numbers.filter(n => n >= 5).length;
+            const smallCount = numbers.length - bigCount;
+            const bias = bigCount - smallCount;
+            let result = bias > 0 ? 'SMALL' : 'BIG';
+            let probability = 85;
+            if (streak) {
+                result = streak === 'BIG' ? 'SMALL' : 'BIG';
+                probability += 5;
+            }
+            if (lastResults[intervalSec].slice(0, 4).every(r => r === result)) {
+                result = result === 'BIG' ? 'SMALL' : 'BIG';
+                probability -= 15;
+            }
+            return { result, probability: Math.min(99, Math.max(80, Math.round(probability))) };
+        }
+        
+        function serverKarmaBalance() {
+            const recent = lastResults[intervalSec].slice(0, 20);
+            const count = { BIG: 0, SMALL: 0 };
+            recent.forEach(r => count[r]++);
+            const diff = Math.abs(count.BIG - count.SMALL);
+            let result = count.BIG > count.SMALL ? 'SMALL' : 'BIG';
+            let probability = 78 + diff;
+            if (diff < 2) result = Math.random() < 0.5 ? 'BIG' : 'SMALL';
+            return { result, probability: Math.min(99, Math.round(probability)) };
+        }
+        
+        function serverParityDominance() {
+            if (numbers.length < 15) return { result: Math.random() < 0.5 ? 'SMALL' : 'BIG', probability: 76 };
+            const evenCount = numbers.slice(0, 15).filter(n => n % 2 === 0).length;
+            const oddCount = 15 - evenCount;
+            let result = evenCount > oddCount ? 'SMALL' : 'BIG';
+            let probability = 80 + Math.abs(evenCount - oddCount);
+            if (lastResults[intervalSec].slice(0, 3).every(r => r === result)) {
+                result = result === 'BIG' ? 'SMALL' : 'BIG';
+                probability -= 12;
+            }
+            return { result, probability: Math.min(99, Math.max(75, Math.round(probability))) };
+        }
+        
+        function serverSlopeAngleEstimator() {
+            if (numbers.length < 5) return { result: Math.random() < 0.5 ? 'SMALL' : 'BIG', probability: 76 };
+            const nums = numbers.slice(0, 5);
+            const angle = Math.atan((nums[0] - nums[4]) / 4) * (180 / Math.PI);
+            let result = angle > 0 ? 'SMALL' : 'BIG';
+            let probability = 80 + Math.min(Math.abs(angle) / 2, 15);
+            return { result, probability: Math.min(99, Math.round(probability)) };
+        }
+        
+        function serverTrendMomentum() {
+            if (numbers.length < 10) return { result: Math.random() < 0.5 ? 'SMALL' : 'BIG', probability: 78 };
+            const recent = numbers.slice(0, 10);
+            const deltas = recent.map((n, i, arr) => i < arr.length - 1 ? arr[i] - arr[i + 1] : 0);
+            const trendScore = deltas.reduce((sum, d) => sum + d, 0);
+            const absMomentum = deltas.reduce((sum, d) => sum + Math.abs(d), 0);
+            let result = trendScore > 0 ? 'SMALL' : 'BIG';
+            let probability = 75 + (Math.abs(trendScore) / absMomentum) * 20;
+            if (lastResults[intervalSec].slice(0, 4).every(r => r === result)) {
+                result = result === 'BIG' ? 'SMALL' : 'BIG';
+                probability -= 15;
+            }
+            return { result, probability: Math.min(99, Math.max(70, Math.round(probability))) };
+        }
+        
+        function serverWeightedFreq() {
+            if (numbers.length === 0) return { result: Math.random() < 0.5 ? 'BIG' : 'SMALL', probability: 82 };
+            const weights = Array.from({ length: numbers.length }, (_, i) => (numbers.length - i));
+            const score = numbers.reduce((sum, n, i) => sum + (n < 5 ? -weights[i] : weights[i]), 0);
+            let result = score >= 0 ? 'BIG' : 'SMALL';
+            let probability = 78 + Math.min(Math.abs(score) / 50, 20);
+            if (lastResults[intervalSec].slice(0, 3).every(r => r === result)) {
+                result = result === 'BIG' ? 'SMALL' : 'BIG';
+                probability -= 12;
+            }
+            return { result, probability: Math.min(99, Math.max(75, Math.round(probability))) };
+        }
+        
+        function serverZigzagReversal() {
+            if (numbers.length < 6) return { result: Math.random() < 0.5 ? 'SMALL' : 'BIG', probability: 75 };
+            const nums = numbers.slice(0, 6);
+            let zigzagCount = 0;
+            for (let i = 1; i < nums.length - 1; i++) {
+                if ((nums[i] > nums[i - 1] && nums[i] > nums[i + 1]) || (nums[i] < nums[i - 1] && nums[i] < nums[i + 1])) {
+                    zigzagCount++;
+                }
+            }
+            let result = zigzagCount >= 2 ? 'SMALL' : 'BIG';
+            let probability = 80 + zigzagCount * 5;
+            return { result, probability: Math.min(99, Math.round(probability)) };
+        }
+        
+        const logics = [
+            serverGaussianPredictor(),
+            serverSmartHybrid(),
+            serverKarmaBalance(),
+            serverParityDominance(),
+            serverSlopeAngleEstimator(),
+            serverTrendMomentum(),
+            serverWeightedFreq(),
+            serverZigzagReversal()
+        ];
+        
+        let bigVotes = 0, smallVotes = 0;
+        let bigConfidence = 0, smallConfidence = 0;
+        
+        logics.forEach(logic => {
+            if (logic.result === 'BIG') {
+                bigVotes++;
+                bigConfidence += logic.probability;
+            } else {
+                smallVotes++;
+                smallConfidence += logic.probability;
+            }
+        });
+        
+        let finalPrediction, finalConfidence;
+        
+        if (bigVotes > smallVotes) {
+            finalPrediction = 'BIG';
+            finalConfidence = Math.round(bigConfidence / bigVotes);
+        } else if (smallVotes > bigVotes) {
+            finalPrediction = 'SMALL';
+            finalConfidence = Math.round(smallConfidence / smallVotes);
+        } else {
+            const avgBig = bigConfidence / (bigVotes || 1);
+            const avgSmall = smallConfidence / (smallVotes || 1);
+            finalPrediction = avgBig > avgSmall ? 'BIG' : 'SMALL';
+            finalConfidence = Math.round(Math.max(avgBig, avgSmall));
+        }
+        
+        let patternName = "8-Logic Hybrid";
+        if (logics[0] && logics[0].probability >= Math.max(...logics.map(l => l.probability))) patternName = "Gaussian Scan";
+        else if (logics[1] && logics[1].probability >= Math.max(...logics.map(l => l.probability))) patternName = "Smart Hybrid";
+        else if (logics[2] && logics[2].probability >= Math.max(...logics.map(l => l.probability))) patternName = "Karma Balance";
+        else if (logics[3] && logics[3].probability >= Math.max(...logics.map(l => l.probability))) patternName = "Parity Dominance";
+        else if (logics[4] && logics[4].probability >= Math.max(...logics.map(l => l.probability))) patternName = "Slope Angle";
+        else if (logics[5] && logics[5].probability >= Math.max(...logics.map(l => l.probability))) patternName = "Trend Momentum";
+        else if (logics[6] && logics[6].probability >= Math.max(...logics.map(l => l.probability))) patternName = "Weighted Frequency";
+        else if (logics[7] && logics[7].probability >= Math.max(...logics.map(l => l.probability))) patternName = "Zigzag Reversal";
+        
+        return {
+            p: finalPrediction,
+            c: Math.min(99, Math.max(75, finalConfidence)),
+            t: patternName
+        };
+    };
+    
+    async function fetchCurrentPeriodAndHistory(){let e=[];try{const t=await fetch(historyURL+"?ts="+Date.now()),n=await t.json();n?.data?.list&&(e=n.data.list.map(e=>({period:e.issueNumber,number:parseInt(e.number),resultType:bigSmall(parseInt(e.number)),color:colorOf(parseInt(e.number))}))),latestGameHistory=e}catch{}let t="Unavailable";try{const n=await fetch(_0x4e2a[0],{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({language:0,random:"e7",signature:"1F",timestamp:Math.floor(Date.now()/1e3),typeId:(30===intervalSec?CFG_30:CFG_60).typeId})}),a=await n.json();a?.data?.issueNumber&&(t=a.data.issueNumber)}catch{}return(!t||"Unavailable"===t)&&e.length>0&&(t=(BigInt(e[0].period)+1n).toString()),qs("#period").textContent="Unavailable"!==t?t:"Load...",{period:t,hist:e}}async function tick(){const e=updateTimer();if(!running)return;if(isSendingStickers||nowSec()<nextSendAllowedAt)return;if(e>5&&e<intervalSec-5&&null!==lastPeriod)return;const{period:t,hist:n}=await fetchCurrentPeriodAndHistory();if("Unavailable"===t||t===lastPeriod)return;if(lastPeriod=t,predictionHistory.length>0){const e=predictionHistory[0];if("Pending"===e.resultStatus){const t=n.find(t=>t.period===e.period);if(t){const n=bigSmall(t.number),a=n===lastPrediction;e.resultType=n,e.resultStatus=a?"WIN":"LOSS",a?(stats.wins++,currentLevelIndex=0,currentBet=betLevels[0],soundOn&&SND_WIN.play().catch(()=>{}),await tgSendStickers()):(stats.losses++,currentLevelIndex++,currentLevelIndex>=betLevels.length&&(currentLevelIndex=0),currentBet=betLevels[currentLevelIndex],soundOn&&(SND_LOSS.play().catch(()=>{}),setTimeout(()=>speakVoice("Mahadev next level pe win karva denge"),800)),e.telegramMessageId&&await tgDelete(e.telegramMessageId)),updateStatsBox()}}}const x = _0x9f3a(n); const a=x.p, o=x.c, r=x.t; lastPrediction=a;
+        
+        if (lastResults[intervalSec].length >= 50) {
+            lastResults[intervalSec].shift();
+        }
+        lastResults[intervalSec].push(a);
+        
+        const i=qs("#prediction");i.style.transform="scale(0.5)",i.style.opacity=0,setTimeout(()=>{i.textContent=a,i.className=a,i.style.transform="scale(1)",i.style.opacity=1},200),qs("#confidence").textContent=o,qs("#patternName").textContent=r,qs("#betAmount").textContent="₹"+currentBet;const s={period:t,prediction:a,confidence:o,logic:r,resultType:"-",resultStatus:"Pending",telegramMessageId:null};predictionHistory.unshift(s),updateStatsBox();const c=Math.max(0,nextSendAllowedAt-nowSec());c>0&&await new Promise(e=>setTimeout(e,c));const d=(new Date).toLocaleDateString("en-GB").replace(/\//g,"-"),l=`✧  RAJ MODS AI ✧\n\n╔═◈═◈═◈═◈═◈═╗\n•Date : ${d}\n•Wingo : ${60===intervalSec?"1Min":"30Sec"}\n•Period : ${t}\n╚═◈═◈═◈═◈═◈═╝\n\n📢 PREDICTION: ${a} 💰\n📊 Conf: ${o}%\n🧠 Pattern: ${r}\n💡 Suggestion: ₹${currentBet}\n\n────────✦✧✦────────`,u=await tgSendPhoto(IMG_PRED,l);u&&(s.telegramMessageId=u),renderTable()}function renderTable(){const e=qs("#tableHead"),t=qs("#tableBody");qs("#predTab").classList.contains("active")?(e.innerHTML="<tr><th>Period</th><th>Pred</th><th>Res</th><th>Sts</th></tr>",t.innerHTML=predictionHistory.map(e=>`<tr style="background:${'WIN'===e.resultStatus?'rgba(16,185,129,0.1)':''}"><td>${String(e.period).slice(-4)}</td><td class="${e.prediction}" style="font-weight:900">${e.prediction}</td><td>${e.resultType}</td><td><span class="status ${e.resultStatus.toLowerCase()}">${e.resultStatus}</span></td></tr>`).join("")):(e.innerHTML="<tr><th>Period</th><th>Num</th><th>Size</th><th>Col</th></tr>",t.innerHTML=latestGameHistory.map(e=>`<tr><td>${String(e.period).slice(-4)}</td><td>${e.number}</td><td>${e.resultType}</td><td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${'Green'===e.color?'#10b981':'Red'===e.color?'#ef4444':'#8b5cf6'}"></span></td></tr>`).join(""))}qs("#startButton").onclick=async()=>{if(!running){const e=qs("#walletInput").value;if(e&&parseInt(e)>0&&calculate6LevelPlan(parseInt(e)),!tgCreds())return void alert("⚠️ Check Telegram Credentials!");running=!0,setButtons(),updateStatsBox(),await sendStartStop("start"),loopId||(loopId=setInterval(tick,1e3))}},qs("#stopButton").onclick=async()=>{running&&(running=!1,setButtons(),updateStatsBox(),await sendStartStop("stop"))},qs("#testBtn").onclick=async()=>{alert(await tgSendMessage("✅ Connected")?"Sent!":"Failed.")},qs("#predTab").onclick=()=>{qs("#predTab").classList.add("active"),qs("#gameTab").classList.remove("active"),renderTable()},qs("#gameTab").onclick=()=>{qs("#gameTab").classList.add("active"),qs("#predTab").classList.remove("active"),renderTable()},setMode(60),setButtons(),updateStatsBox(),renderTable(),setInterval(updateTimer,1e3);
+}
+</script>
+</body>
+</html>
